@@ -1,4 +1,5 @@
 <!-- LOVABLE:BEGIN -->
+
 > [!IMPORTANT]
 > This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
 > published git history — force pushing, or rebasing/amending/squashing commits
@@ -27,7 +28,9 @@ use the editor.
   `LOVABLE_API_KEY`. When Lovable does not provide one, users can bring their
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
+
 <!-- LOVABLE:END -->
+
 - The Studio Layl UI lives in src/components/StudioLayl.tsx with its own stylesheet src/studio-layl.css, rendered after hydration on / because it reads browser storage on first render.
 - Works live in the tracks table (public read, admin-only writes via has_role); audio sits in the private track-audio bucket and is streamed through signed URLs from src/lib/studio.server.ts so files are never publicly listable.
 - The first account created is made admin by a database trigger; never grant admin from client code.
