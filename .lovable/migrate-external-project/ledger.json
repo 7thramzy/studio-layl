@@ -1,0 +1,4 @@
+[{"capability":"code/ui","source":"React+Vite SPA","outcome":"migrate","status":"done","next_action":"none"},
+{"capability":"data","source":"browser localStorage only (tracks, favorites, theme)","outcome":"keep as-is","status":"done","next_action":"none; no database or users in source"},
+{"capability":"whatsapp request","source":"wa.me link, placeholder number","outcome":"keep","status":"done","next_action":"user to supply real studio number"},
+{"capability":"audio files","source":"none bundled","outcome":"keep","status":"pending","next_action":"user to provide MP3s"}]

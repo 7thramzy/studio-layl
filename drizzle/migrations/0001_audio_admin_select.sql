@@ -1,0 +1,1 @@
+CREATE POLICY "Admins read audio" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'track-audio' AND public.has_role(auth.uid(), 'admin'));
