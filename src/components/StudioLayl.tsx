@@ -579,6 +579,16 @@ export default function App() {
             <b>{cur.title}</b>
             <small>{cur.artist}</small>
           </span>
+          <button
+            className="dock-dismiss"
+            onClick={() => {
+              stop();
+              setDock(null);
+            }}
+            aria-label="إغلاق المشغل"
+          >
+            <X size={16} />
+          </button>
           <button className="icon-btn" onClick={() => step(-1)} aria-label="السابق">
             <SkipForward />
           </button>
@@ -654,28 +664,33 @@ function RequestModal({ close, preset }: { close: () => void; preset: string }) 
     [phone, setPhone] = useState(""),
     [ver, setVer] = useState(VL["daf"] ?? "إيقاع ودف"),
     [adds, setAdds] = useState<string[]>([]);
-  const send = () => {
+  const [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  const send = async () => {
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    const { error: saveError } = await supabase.from("orders").insert({
+      name: name.trim(),
+      work_type: type,
+      occasion,
+      event_date: date || null,
+      details,
+      version: ver,
+      addons: adds,
+      reference: preset,
+      phone: phone.trim(),
+    });
+    if (saveError) {
+      setSaving(false);
+      setError("تعذر حفظ الطلب الآن. لم يتم فتح واتساب، حاول مرة أخرى.");
+      return;
+    }
     const msg = `طلب جديد من موقع استوديو ليل\nالاسم: ${name}\nنوع العمل: ${type}\nالمناسبة: ${occasion}\nالتاريخ: ${date || "غير محدد"}\nالجوال: ${phone || "غير محدد"}\nالنسخة: ${ver}\nالإضافات: ${adds.join("، ") || "لا يوجد"}\nالتفاصيل: ${details}`;
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-    // Keep a copy of the order for the admin board (best effort; WhatsApp stays the primary channel).
-    void supabase
-      .from("orders")
-      .insert({
-        name: name.trim(),
-        work_type: type,
-        occasion,
-        event_date: date || null,
-        details,
-        version: ver,
-        addons: adds,
-        reference: preset,
-        phone: phone.trim(),
-      })
-      .then(() => undefined);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    const whatsappWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    if (!whatsappWindow) window.location.assign(whatsappUrl);
+    setSaving(false);
   };
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
@@ -760,10 +775,21 @@ function RequestModal({ close, preset }: { close: () => void; preset: string }) 
             />
           </label>
         </div>
-        <button className="gold-btn submit" disabled={!name.trim()} onClick={send}>
-          إرسال الطلب عبر واتساب <MessageCircle />
+        <button
+          className="gold-btn submit"
+          disabled={!name.trim() || saving}
+          onClick={() => void send()}
+        >
+          {saving ? "جارٍ حفظ الطلب..." : "إرسال الطلب عبر واتساب"} <MessageCircle />
         </button>
-        <small className="note">سيتم فتح واتساب برسالة جاهزة لمراجعتها وإرسالها.</small>
+        {error && (
+          <small className="form-error" role="alert">
+            {error}
+          </small>
+        )}
+        <small className="note">
+          سيُحفظ الطلب أولًا، ثم يفتح واتساب برسالة جاهزة لمراجعتها وإرسالها.
+        </small>
       </div>
     </div>
   );
