@@ -32,6 +32,8 @@ import {
   Share2,
   ScrollText,
   Download,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 type Track = PublicTrack;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -156,6 +158,7 @@ export default function App() {
     [menu, setMenu] = useState(false),
     [toast, setToast] = useState(""),
     [dock, setDock] = useState<string | null>(null),
+    [dockExpanded, setDockExpanded] = useState(true),
     [mode, setMode] = useState("fx"),
     [ver, setVer] = useState("all"),
     [preset, setPreset] = useState(""),
@@ -218,6 +221,8 @@ export default function App() {
     if (t.audioUrl && audio.current) {
       void loadWaveform(t);
       audio.current.src = t.audioUrl;
+      const savedPosition = Number(localStorage.getItem(`layl-position-${t.id}`) || 0);
+      if (savedPosition > 0) audio.current.currentTime = savedPosition;
       void audio.current
         .play()
         .then(() => setPlaying(t.id))
@@ -298,6 +303,8 @@ export default function App() {
         onTimeUpdate={(e) => {
           setTime(e.currentTarget.currentTime);
           setDur(e.currentTarget.duration || 0);
+          if (cur?.id && e.currentTarget.currentTime > 0)
+            localStorage.setItem(`layl-position-${cur.id}`, String(e.currentTarget.currentTime));
         }}
       />
       <header className="top">
@@ -662,7 +669,7 @@ export default function App() {
         </div>
       </footer>
       {cur && (
-        <div className="dock">
+        <div className={dockExpanded ? "dock expanded" : "dock compact"}>
           <span className="dock-meta">
             <b>{cur.title}</b>
             <small>{cur.artist}</small>
@@ -676,6 +683,13 @@ export default function App() {
             aria-label="إغلاق المشغل"
           >
             <X size={16} />
+          </button>
+          <button
+            className="dock-toggle"
+            onClick={() => setDockExpanded((expanded) => !expanded)}
+            aria-label={dockExpanded ? "تصغير المشغل" : "توسيع المشغل"}
+          >
+            {dockExpanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
           <button className="icon-btn" onClick={() => step(-1)} aria-label="السابق">
             <SkipForward />
