@@ -47,6 +47,7 @@ const VL: Record<string, string> = {
   pure: "صافي",
 };
 const ADDS = ["كتابة قصيدة خاصة", "إلقاء شعري في المقدمة", "مونتاج فيديو 4K", "تسليم مستعجل VIP"];
+const MOODS = ["الكل", "هادئ", "حماسي", "فخم", "ترحيبي", "عاطفي"];
 const CONTACTS: [string, string, string][] = [
   ["واتساب داخل المملكة", "0505174857", "tel:0505174857"],
   ["واتساب خارج المملكة", "+966505174857", "https://wa.me/966505174857"],
@@ -106,6 +107,19 @@ const startSynth = (m: string) => {
   tmr = window.setInterval(b, 200);
 };
 const WHATSAPP_NUMBER = "966505174857";
+const makeOrderCode = () => {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `LAYL-${date}-${suffix}`;
+};
+const moodOf = (t: Track) => {
+  const text = `${t.title} ${t.description} ${t.category}`;
+  if (/ترحيب|عرضة|فخر|حماس|شيلة/i.test(text)) return "حماسي";
+  if (/فخم|مهابة|ملكة|كوشة/i.test(text)) return "فخم";
+  if (/هادئ|تحرس|رقيق|ناعم/i.test(text)) return "هادئ";
+  if (/عاطف|ذكرى|إهداء|حب/i.test(text)) return "عاطفي";
+  return "ترحيبي";
+};
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12
@@ -132,6 +146,9 @@ export default function App() {
   });
   const [category, setCategory] = useState("الكل"),
     [search, setSearch] = useState(""),
+    [artistFilter, setArtistFilter] = useState("الكل"),
+    [moodFilter, setMoodFilter] = useState("الكل"),
+    [sortBy, setSortBy] = useState("featured"),
     [playing, setPlaying] = useState<string | null>(null),
     [onlyFav, setOnlyFav] = useState(false),
     [request, setRequest] = useState(false),
@@ -144,26 +161,36 @@ export default function App() {
     [preset, setPreset] = useState(""),
     [time, setTime] = useState(0),
     [dur, setDur] = useState(0),
-    [lyricsFor, setLyricsFor] = useState<Track | null>(null);
+    [lyricsFor, setLyricsFor] = useState<Track | null>(null),
+    [detailsFor, setDetailsFor] = useState<Track | null>(null);
+  const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
   const audio = useRef<HTMLAudioElement>(null),
     tk = useRef(0),
-    deep = useRef(false);
+    deep = useRef(false),
+    waveformBusy = useRef(new Set<string>());
   useEffect(() => {
     document.documentElement.dataset["theme"] = theme;
     localStorage.setItem("layl-theme", theme);
   }, [theme]);
   useEffect(() => localStorage.setItem("layl-favorites", JSON.stringify(favorites)), [favorites]);
-  const visible = useMemo(
-    () =>
-      tracks.filter(
-        (t) =>
-          (category === "الكل" || t.category === category) &&
-          (ver === "all" || t.versions.includes(ver)) &&
-          (!onlyFav || favorites.includes(t.id)) &&
-          `${t.title} ${t.artist} ${t.description}`.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [tracks, category, onlyFav, favorites, search, ver],
-  );
+  const artists = useMemo(() => ["الكل", ...new Set(tracks.map((t) => t.artist))], [tracks]);
+  const visible = useMemo(() => {
+    const filtered = tracks.filter(
+      (t) =>
+        (category === "الكل" || t.category === category) &&
+        (ver === "all" || t.versions.includes(ver)) &&
+        (artistFilter === "الكل" || t.artist === artistFilter) &&
+        (moodFilter === "الكل" || moodOf(t) === moodFilter) &&
+        (!onlyFav || favorites.includes(t.id)) &&
+        `${t.title} ${t.artist} ${t.description}`.toLowerCase().includes(search.toLowerCase()),
+    );
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "plays") return b.plays - a.plays;
+      if (sortBy === "title") return a.title.localeCompare(b.title, "ar");
+      if (sortBy === "newest") return b.id.localeCompare(a.id);
+      return Number(b.featured) - Number(a.featured);
+    });
+  }, [tracks, category, onlyFav, favorites, search, ver, artistFilter, moodFilter, sortBy]);
   const notify = (s: string) => {
     setToast(s);
     window.setTimeout(() => setToast(""), 2800);
@@ -189,6 +216,7 @@ export default function App() {
     setDur(0);
     void supabase.rpc("increment_plays", { track_id: t.id }).then(() => undefined);
     if (t.audioUrl && audio.current) {
+      void loadWaveform(t);
       audio.current.src = t.audioUrl;
       void audio.current
         .play()
@@ -199,6 +227,34 @@ export default function App() {
       setDur(30);
       tk.current = window.setInterval(() => setTime((x) => Math.min(30, x + 0.25)), 250);
       setPlaying(t.id);
+    }
+  };
+  const loadWaveform = async (t: Track) => {
+    if (!t.audioUrl || waveforms[t.id] || waveformBusy.current.has(t.id)) return;
+    waveformBusy.current.add(t.id);
+    try {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const context = ac || new AC();
+      ac = context;
+      const buffer = await fetch(t.audioUrl)
+        .then((response) => response.arrayBuffer())
+        .then((data) => context.decodeAudioData(data));
+      const channel = buffer.getChannelData(0);
+      const bars = 19;
+      const size = Math.max(1, Math.floor(channel.length / bars));
+      const values = Array.from({ length: bars }, (_, i) => {
+        let peak = 0;
+        for (let j = i * size; j < Math.min(channel.length, (i + 1) * size); j += 1)
+          peak = Math.max(peak, Math.abs(channel[j]));
+        return Math.max(18, Math.round(peak * 100));
+      });
+      setWaveforms((old) => ({ ...old, [t.id]: values }));
+    } catch {
+      notify("تعذر تجهيز الموجة الصوتية، ستستمر المعاينة بشكل طبيعي.");
+    } finally {
+      waveformBusy.current.delete(t.id);
     }
   };
   const pick = (t: Track) => {
@@ -409,14 +465,43 @@ export default function App() {
               </button>
             ))}
           </div>
+          <div className="smart-filters" aria-label="مرشحات إضافية">
+            <label>
+              الإحساس
+              <select value={moodFilter} onChange={(e) => setMoodFilter(e.target.value)}>
+                {MOODS.map((mood) => (
+                  <option key={mood}>{mood}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              الفنان
+              <select value={artistFilter} onChange={(e) => setArtistFilter(e.target.value)}>
+                {artists.map((artist) => (
+                  <option key={artist}>{artist}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              ترتيب
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="featured">اختيار الاستوديو</option>
+                <option value="newest">الأحدث</option>
+                <option value="plays">الأكثر استماعًا</option>
+                <option value="title">أبجديًا</option>
+              </select>
+            </label>
+          </div>
           <div className="cards">
             {visible.map((t, i) => (
               <article className="track" id={"w-" + t.id} key={t.id}>
                 <div className="cover">
-                  <div className="wave">
-                    {Array.from({ length: 19 }, (_, n) => (
-                      <i key={n} />
-                    ))}
+                  <div className={waveforms[t.id] ? "wave real" : "wave"}>
+                    {(waveforms[t.id] ?? Array.from({ length: 19 }, () => null)).map(
+                      (height, n) => (
+                        <i key={n} style={height ? { height: `${height}%` } : undefined} />
+                      ),
+                    )}
                   </div>
                   <span className="num">{String(i + 1).padStart(2, "0")}</span>
                   <button className="play" onClick={() => play(t)} aria-label="تشغيل">
@@ -456,6 +541,9 @@ export default function App() {
                     ))}
                   </div>
                   <div className="track-actions">
+                    <button className="listen" onClick={() => setDetailsFor(t)}>
+                      <Music2 size={13} /> التفاصيل
+                    </button>
                     <button className="gold-btn" onClick={() => order(t)}>
                       خصّصه باسمك
                     </button>
@@ -644,6 +732,16 @@ export default function App() {
           </div>
         </div>
       )}
+      {detailsFor && (
+        <TrackDetailsModal
+          track={detailsFor}
+          playing={playing === detailsFor.id}
+          play={() => play(detailsFor)}
+          order={() => order(detailsFor)}
+          share={() => void share(detailsFor)}
+          close={() => setDetailsFor(null)}
+        />
+      )}
       {request && <RequestModal preset={preset} close={() => setRequest(false)} />}
       {admin && <AdminModal tracks={tracks} close={() => setAdmin(false)} />}
       {toast && (
@@ -652,6 +750,67 @@ export default function App() {
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+function TrackDetailsModal({
+  track,
+  playing,
+  play,
+  order,
+  share,
+  close,
+}: {
+  track: Track;
+  playing: boolean;
+  play: () => void;
+  order: () => void;
+  share: () => void;
+  close: () => void;
+}) {
+  return (
+    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+      <div className="modal track-details-modal">
+        <button className="close" onClick={close} aria-label="إغلاق">
+          <X />
+        </button>
+        <div className="eyebrow">
+          <i /> تفاصيل العمل
+        </div>
+        <h2>{track.title}</h2>
+        <p className="detail-artist">{track.artist}</p>
+        <div className="detail-meta">
+          <span>{track.category}</span>
+          <span>{moodOf(track)}</span>
+          <span>{track.duration}</span>
+          <span>{track.plays} تشغيل</span>
+        </div>
+        <p className="intro">{track.description}</p>
+        <div className="detail-versions">
+          {track.versions.map((version) => (
+            <span key={version}>{VL[version]}</span>
+          ))}
+        </div>
+        <div className="detail-actions">
+          <button className="gold-btn" onClick={play}>
+            {playing ? <Pause size={15} /> : <Play size={15} />}
+            {playing ? "إيقاف المعاينة" : "استمع إلى المعاينة"}
+          </button>
+          <button className="listen" onClick={share}>
+            <Share2 size={14} /> مشاركة
+          </button>
+          <button className="listen" onClick={order}>
+            <MessageCircle size={14} /> اطلبها باسمك
+          </button>
+        </div>
+        {track.lyrics && (
+          <div className="detail-lyrics">
+            <b>لمحة من الكلمات</b>
+            <pre>{track.lyrics}</pre>
+          </div>
+        )}
+        <small className="note">لا توجد أسعار داخل المنصة؛ نكمل التفاصيل عبر واتساب.</small>
+      </div>
     </div>
   );
 }
@@ -665,17 +824,20 @@ function RequestModal({ close, preset }: { close: () => void; preset: string }) 
     [ver, setVer] = useState(VL["daf"] ?? "إيقاع ودف"),
     [adds, setAdds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [savedCode, setSavedCode] = useState("");
   const send = async () => {
     if (!name.trim() || saving) return;
     setSaving(true);
     setError("");
+    const orderCode = makeOrderCode();
+    const savedDetails = `رقم الطلب: ${orderCode}\n${details}`;
     const { error: saveError } = await supabase.from("orders").insert({
       name: name.trim(),
       work_type: type,
       occasion,
       event_date: date || null,
-      details,
+      details: savedDetails,
       version: ver,
       addons: adds,
       reference: preset,
@@ -686,10 +848,11 @@ function RequestModal({ close, preset }: { close: () => void; preset: string }) 
       setError("تعذر حفظ الطلب الآن. لم يتم فتح واتساب، حاول مرة أخرى.");
       return;
     }
-    const msg = `طلب جديد من موقع استوديو ليل\nالاسم: ${name}\nنوع العمل: ${type}\nالمناسبة: ${occasion}\nالتاريخ: ${date || "غير محدد"}\nالجوال: ${phone || "غير محدد"}\nالنسخة: ${ver}\nالإضافات: ${adds.join("، ") || "لا يوجد"}\nالتفاصيل: ${details}`;
+    const msg = `طلب جديد من موقع استوديو ليل\nرقم الطلب: ${orderCode}\nالاسم: ${name}\nنوع العمل: ${type}\nالمناسبة: ${occasion}\nالتاريخ: ${date || "غير محدد"}\nالجوال: ${phone || "غير محدد"}\nالنسخة: ${ver}\nالإضافات: ${adds.join("، ") || "لا يوجد"}\nالتفاصيل: ${details}`;
     const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
     const whatsappWindow = window.open(whatsappUrl, "_blank", "noopener,noreferrer");
     if (!whatsappWindow) window.location.assign(whatsappUrl);
+    setSavedCode(orderCode);
     setSaving(false);
   };
   return (
@@ -777,11 +940,20 @@ function RequestModal({ close, preset }: { close: () => void; preset: string }) 
         </div>
         <button
           className="gold-btn submit"
-          disabled={!name.trim() || saving}
+          disabled={!name.trim() || saving || !!savedCode}
           onClick={() => void send()}
         >
-          {saving ? "جارٍ حفظ الطلب..." : "إرسال الطلب عبر واتساب"} <MessageCircle />
+          {saving ? "جارٍ حفظ الطلب..." : savedCode ? "تم حفظ الطلب" : "إرسال الطلب عبر واتساب"}{" "}
+          <MessageCircle />
         </button>
+        {savedCode && (
+          <div className="order-confirmation" role="status">
+            <CheckCircle2 size={18} />
+            <span>
+              تم حفظ طلبكم برقم <bdi dir="ltr">{savedCode}</bdi>، وتم تجهيز رسالة واتساب.
+            </span>
+          </div>
+        )}
         {error && (
           <small className="form-error" role="alert">
             {error}
@@ -1018,9 +1190,12 @@ const STATUS: Record<string, string> = {
   cancelled: "ملغي",
 };
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+const orderCodeOf = (details: string) =>
+  details.match(/رقم الطلب:\s*(LAYL-[A-Z0-9-]+)/)?.[1] ?? "—";
 const exportCsv = (rows: OrderRow[]) => {
   const q = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const head = [
+    "رقم الطلب",
     "التاريخ",
     "الاسم",
     "الجوال",
@@ -1034,6 +1209,7 @@ const exportCsv = (rows: OrderRow[]) => {
   ];
   const body = rows.map((o) =>
     [
+      orderCodeOf(o.details),
       o.created_at.slice(0, 10),
       o.name,
       o.phone,
@@ -1196,6 +1372,9 @@ function OrdersBoard() {
           <div key={o.id}>
             <span>
               {o.name} — {o.work_type}
+              <small>
+                رقم الطلب: <bdi dir="ltr">{orderCodeOf(o.details)}</bdi>
+              </small>
               <small>
                 {[o.version, o.reference, o.addons.join("، "), o.event_date]
                   .filter(Boolean)

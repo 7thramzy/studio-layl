@@ -630,6 +630,60 @@ h2 em {
   font-weight: 500;
   margin: 14px 0 5px;
 }
+.track-details-modal {
+  max-width: 620px;
+}
+.detail-artist {
+  color: var(--gold);
+  font-size: 12px;
+  margin: 0 0 18px;
+}
+.detail-meta,
+.detail-versions,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.detail-meta {
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 18px;
+}
+.detail-meta span,
+.detail-versions span {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+}
+.detail-versions {
+  margin: -10px 0 22px;
+}
+.detail-versions span {
+  color: var(--gold);
+  font-size: 10px;
+}
+.detail-actions .listen {
+  min-height: 42px;
+  padding: 0 10px;
+  background: none;
+  border: 0;
+}
+.detail-lyrics {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+}
+.detail-lyrics pre {
+  white-space: pre-wrap;
+  color: var(--text);
+  font:
+    16px/1.9 Amiri,
+    serif;
+  margin: 8px 0 0;
+}
 .intro {
   font-size: 10px;
   line-height: 2;
@@ -688,6 +742,19 @@ h2 em {
   line-height: 1.7;
   text-align: center;
   margin-top: 10px;
+}
+.order-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  color: var(--gold);
+  font-size: 10px;
+  line-height: 1.8;
+  text-align: center;
 }
 .admin-list {
   margin-top: 20px;
@@ -834,6 +901,13 @@ h2 em {
   .search input {
     width: 100%;
   }
+  .smart-filters {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .smart-filters label {
+    min-height: 44px;
+  }
   .cards {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
@@ -895,6 +969,15 @@ h2 em {
   }
   .modal {
     padding: 27px 19px;
+  }
+  .detail-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .detail-actions .gold-btn,
+  .detail-actions .listen {
+    width: 100%;
+    justify-content: center;
   }
   .form {
     grid-template-columns: 1fr;
@@ -1062,6 +1145,33 @@ body {
 }
 .vfilter {
   margin: 0 0 22px;
+}
+.smart-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 10px;
+  margin: -8px 0 24px;
+}
+.smart-filters label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+}
+.smart-filters select {
+  min-width: 0;
+  max-width: 70%;
+  border: 0;
+  outline: 0;
+  background: var(--bg);
+  color: var(--text);
+  padding: 7px 4px;
+  font-size: 10px;
 }
 .vfilter .tab,
 .adds .tab,
