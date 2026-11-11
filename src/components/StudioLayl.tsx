@@ -489,26 +489,35 @@ export default function App() {
             </div>
           </div>
           <div className="hero-visual" aria-label="معاينة بصرية للشرائح">
-            <picture className="hero-visual-picture">
-              <source media="(max-width: 650px)" srcSet="/logo.webp" />
-              <img
-                className="hero-visual-image"
-                src="/banner-hero.webp"
-                alt="هوية استوديو ليل الصوتية"
-                width={1800}
-                height={298}
-                fetchPriority="high"
-                decoding="async"
-              />
-            </picture>
-            <div className="hero-visual-shade" />
-            <div className="hero-visual-mark">
-              <img src="/logo.webp" alt="شعار استوديو ليل" width={92} height={92} />
-              <span>YOUR MOMENT / OUR SOUND</span>
+            <div className="hero-card-media">
+              <picture className="hero-visual-picture">
+                <source media="(max-width: 650px)" srcSet="/logo.webp" />
+                <img
+                  className="hero-visual-image"
+                  src="/banner-hero.webp"
+                  alt="هوية استوديو ليل الصوتية"
+                  width={1800}
+                  height={298}
+                  fetchPriority="high"
+                  decoding="async"
+                />
+              </picture>
+              <div className="hero-visual-shade" />
+              <div className="hero-visual-mark">
+                <img src="/logo.webp" alt="شعار استوديو ليل" width={92} height={92} />
+                <span>YOUR MOMENT / OUR SOUND</span>
+              </div>
+              <span className="hero-card-count">
+                {String(heroSlide + 1).padStart(2, "0")} /{" "}
+                {String(HERO_SLIDES.length).padStart(2, "0")}
+              </span>
             </div>
-            <div className="hero-visual-caption">
-              <span>استوديو ليل</span>
-              <b>{String(heroSlide + 1).padStart(2, "0")}</b>
+            <div className="hero-card-content">
+              <div className="hero-card-kicker">
+                <i /> {HERO_SLIDES[heroSlide].kicker}
+              </div>
+              <h3>{HERO_SLIDES[heroSlide].title}</h3>
+              <p>{HERO_SLIDES[heroSlide].body}</p>
             </div>
           </div>
           <div className="hero-controls">

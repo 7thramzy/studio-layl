@@ -1916,3 +1916,114 @@ html:not(.motion-ready) .motion-reveal:not(.is-visible) .ai-box {
     will-change: auto;
   }
 }
+
+/* Hero editorial card: media first, story second */
+.hero-visual {
+  display: grid;
+  grid-template-rows: minmax(300px, 1fr) auto;
+  min-height: 540px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--panel) 94%, #000);
+  overflow: hidden;
+}
+.hero-visual::before,
+.hero-visual::after {
+  display: none;
+}
+.hero-card-media {
+  position: relative;
+  min-height: 300px;
+  overflow: hidden;
+  background: #171615;
+}
+.hero-card-media .hero-visual-picture {
+  position: absolute;
+  inset: 0;
+}
+.hero-card-media .hero-visual-shade {
+  z-index: 1;
+}
+.hero-card-media .hero-visual-mark {
+  z-index: 3;
+}
+.hero-card-count {
+  position: absolute;
+  z-index: 4;
+  top: 22px;
+  left: 24px;
+  direction: ltr;
+  color: rgba(255, 255, 255, 0.78);
+  font:
+    500 10px/1 Alexandria,
+    sans-serif;
+  letter-spacing: 2px;
+}
+.hero-card-content {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  gap: 9px;
+  padding: 22px 26px 25px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  backdrop-filter: blur(18px);
+}
+.hero-card-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gold);
+  font-size: 10px;
+}
+.hero-card-kicker i {
+  width: 18px;
+  height: 1px;
+  background: var(--gold);
+}
+.hero-card-content h3 {
+  max-width: 470px;
+  margin: 0;
+  color: var(--text);
+  font:
+    400 clamp(24px, 3vw, 38px)/1.25 Amiri,
+    serif;
+  letter-spacing: -0.5px;
+}
+.hero-card-content p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.9;
+}
+@media (max-width: 900px) {
+  .hero-visual {
+    min-height: 500px;
+  }
+  .hero-card-content {
+    padding: 20px 21px 22px;
+  }
+}
+@media (max-width: 650px) {
+  .hero-visual {
+    min-height: 0;
+    grid-template-rows: 250px auto;
+  }
+  .hero-card-media {
+    min-height: 250px;
+  }
+  .hero-card-content {
+    padding: 18px 18px 21px;
+  }
+  .hero-card-content h3 {
+    font-size: 28px;
+  }
+  .hero-card-content p {
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .hero-card-count {
+    top: 18px;
+    left: 18px;
+  }
+}
