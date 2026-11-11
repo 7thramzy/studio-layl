@@ -1854,3 +1854,65 @@ body {
     transition: none;
   }
 }
+
+/* Responsive motion guardrails */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.motion-reveal {
+  opacity: 1;
+  transform: none;
+}
+html.motion-ready .motion-reveal:not(.is-visible) {
+  opacity: 0;
+  transform: translate3d(0, 30px, 0);
+}
+html.motion-ready .motion-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .section-head,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .tools,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .smart-filters,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .vfilter,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .library-foot,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .contacts,
+html:not(.motion-ready) .motion-reveal:not(.is-visible) .ai-box {
+  opacity: 1;
+  transform: none;
+}
+.parallax-target {
+  transform: translate3d(0, var(--parallax-y, 0px), 0);
+  transition: transform 0.2s linear;
+  will-change: transform;
+}
+@media (max-width: 650px) {
+  .track-actions {
+    flex-wrap: wrap;
+    row-gap: 7px;
+  }
+  .parallax-target {
+    transition-duration: 0.3s;
+  }
+}
+@media (max-width: 560px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+  .cover {
+    height: 170px;
+  }
+  .track-actions .gold-btn,
+  .track-actions .listen {
+    min-height: 34px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .parallax-target {
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+}

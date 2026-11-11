@@ -215,15 +215,21 @@ export default function App() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const revealItems = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
     const parallaxItems = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add("is-visible");
-        });
-      },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.08 },
-    );
-    revealItems.forEach((item) => observer.observe(item));
+    document.documentElement.classList.add("motion-ready");
+    if (!("IntersectionObserver" in window))
+      revealItems.forEach((item) => item.classList.add("is-visible"));
+    const observer =
+      "IntersectionObserver" in window
+        ? new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) entry.target.classList.add("is-visible");
+              });
+            },
+            { rootMargin: "0px 0px -10% 0px", threshold: 0.08 },
+          )
+        : null;
+    revealItems.forEach((item) => observer?.observe(item));
     let frame = 0;
     const updateParallax = () => {
       frame = 0;
@@ -243,7 +249,8 @@ export default function App() {
     updateParallax();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
+      document.documentElement.classList.remove("motion-ready");
       window.removeEventListener("scroll", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
@@ -532,8 +539,8 @@ export default function App() {
           </div>
         </section>
         <Recommender tracks={tracks} play={play} playing={playing} />
-        <section className="section motion-reveal" id="library" data-reveal data-parallax="0.035">
-          <div className="section-head">
+        <section className="section motion-reveal" id="library" data-reveal>
+          <div className="section-head parallax-target" data-parallax="0.035">
             <div>
               <div className="eyebrow">
                 <i /> مكتبة الاستوديو
@@ -710,17 +717,17 @@ export default function App() {
             <span>{visible.length} أعمال معروضة</span>
           </div>
         </section>
-        <section className="quote motion-reveal" id="about" data-reveal data-parallax="0.055">
+        <section className="quote motion-reveal" id="about" data-reveal>
           <div>“</div>
-          <p>
+          <p className="parallax-target" data-parallax="0.055">
             ليست مجرد زفة؛ إنها نغمة تبقى
             <br />
             كلما عادت الذاكرة إلى تلك الليلة.
           </p>
           <small>استوديو ليل — نصنع صوت لحظتكم</small>
         </section>
-        <section className="custom motion-reveal" data-reveal data-parallax="0.04">
-          <div className="custom-icon">
+        <section className="custom motion-reveal" data-reveal>
+          <div className="custom-icon parallax-target" data-parallax="0.04">
             <AudioLines />
           </div>
           <div>
@@ -735,8 +742,8 @@ export default function App() {
           </button>
         </section>
         <Reviews />
-        <section className="section motion-reveal" id="contact" data-reveal data-parallax="0.025">
-          <div className="section-head">
+        <section className="section motion-reveal" id="contact" data-reveal>
+          <div className="section-head parallax-target" data-parallax="0.025">
             <div>
               <div className="eyebrow">
                 <i /> التواصل الرسمي
@@ -1126,13 +1133,8 @@ function Recommender({
     }
   };
   return (
-    <section
-      className="section ai-match motion-reveal"
-      id="match"
-      data-reveal
-      data-parallax="0.025"
-    >
-      <div className="section-head">
+    <section className="section ai-match motion-reveal" id="match" data-reveal>
+      <div className="section-head parallax-target" data-parallax="0.025">
         <div>
           <div className="eyebrow">
             <i /> مستشار ليل
@@ -1385,8 +1387,8 @@ function Reviews() {
   const { data = [] } = useReviews();
   if (!data.length) return null;
   return (
-    <section className="section motion-reveal" id="reviews" data-reveal data-parallax="0.025">
-      <div className="section-head">
+    <section className="section motion-reveal" id="reviews" data-reveal>
+      <div className="section-head parallax-target" data-parallax="0.025">
         <div>
           <div className="eyebrow">
             <i /> آراء العملاء
