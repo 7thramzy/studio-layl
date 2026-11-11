@@ -34,6 +34,8 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 type Track = PublicTrack;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -130,6 +132,29 @@ const greeting = () => {
       ? "مساء يليق بتفاصيلكم"
       : "ليلتكم أجمل مع استوديو ليل";
 };
+const HERO_SLIDES = [
+  {
+    kicker: "زفات الزواج",
+    title: "صوت يليق ببداية الحكاية.",
+    body: "اختاروا الإحساس، واتركوا لنا صناعة التفاصيل التي تبقى معكم بعد انتهاء الليلة.",
+    cta: "استكشف زفات الزواج",
+    filter: "زفات",
+  },
+  {
+    kicker: "شيلات التخرج",
+    title: "لحظة الوصول لها نغمتها.",
+    body: "إيقاع يرفع الفخر، وكلمات تحمل اسم صاحب الإنجاز كما تستحق اللحظة.",
+    cta: "استمع إلى الشيلات",
+    filter: "شيلات",
+  },
+  {
+    kicker: "عمل يحمل اسمكم",
+    title: "حكاية لا تشبه غيرها.",
+    body: "من أول فكرة إلى النسخة التي تفتحونها في مناسبتكم، نصنع العمل حول تفاصيلكم.",
+    cta: "ابدأ طلبًا مخصصًا",
+    filter: "مخصص",
+  },
+] as const;
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">(
     () => (localStorage.getItem("layl-theme") as "dark" | "light") || "dark",
@@ -166,6 +191,8 @@ export default function App() {
     [dur, setDur] = useState(0),
     [lyricsFor, setLyricsFor] = useState<Track | null>(null),
     [detailsFor, setDetailsFor] = useState<Track | null>(null);
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
   const [waveforms, setWaveforms] = useState<Record<string, number[]>>({});
   const audio = useRef<HTMLAudioElement>(null),
     tk = useRef(0),
@@ -176,6 +203,14 @@ export default function App() {
     localStorage.setItem("layl-theme", theme);
   }, [theme]);
   useEffect(() => localStorage.setItem("layl-favorites", JSON.stringify(favorites)), [favorites]);
+  useEffect(() => {
+    if (heroPaused) return;
+    const timer = window.setInterval(
+      () => setHeroSlide((current) => (current + 1) % HERO_SLIDES.length),
+      6500,
+    );
+    return () => window.clearInterval(timer);
+  }, [heroPaused]);
   const artists = useMemo(() => ["الكل", ...new Set(tracks.map((t) => t.artist))], [tracks]);
   const visible = useMemo(() => {
     const filtered = tracks.filter(
@@ -286,10 +321,10 @@ export default function App() {
     if (!w || deep.current || !tracks.some((t) => t.id === w)) return;
     deep.current = true;
     setDock(w);
-    window.setTimeout(
-      () => document.getElementById("w-" + w)?.scrollIntoView({ block: "center" }),
-      300,
-    );
+    window.setTimeout(() => {
+      const work = document.getElementById("w-" + w);
+      if (work) window.scrollTo({ top: work.offsetTop - 80, behavior: "smooth" });
+    }, 300);
   }, [tracks]);
   const order = (t?: Track) => {
     setPreset(t ? t.title : "");
@@ -358,62 +393,94 @@ export default function App() {
         </div>
       </header>
       <main>
-        <section className="hero" id="home">
+        <section
+          className="hero hero-carousel"
+          id="home"
+          onMouseEnter={() => setHeroPaused(true)}
+          onMouseLeave={() => setHeroPaused(false)}
+        >
           <div className="hero-copy">
             <div className="eyebrow">
-              <i /> فنّ يصنع للّحظة ذاكرة
+              <i /> {HERO_SLIDES[heroSlide].kicker}
             </div>
             <p className="greeting">{greeting()}</p>
-            <h1>
-              بعض اللحظات
-              <br />
-              تستحق <em>صوتاً</em> لا يُنسى.
-            </h1>
-            <p className="lead">
-              نصنع زفاتكم وشيلاتكم بعناية، لتكون الموسيقى جزءاً من الحكاية التي تروونها دائماً.
-            </p>
+            <div className="hero-slide-copy" key={heroSlide}>
+              <h1>{HERO_SLIDES[heroSlide].title}</h1>
+              <p className="lead">{HERO_SLIDES[heroSlide].body}</p>
+            </div>
             <div className="hero-actions">
-              <button className="gold-btn" onClick={() => setRequest(true)}>
-                صمّم زفتك الخاصة <ArrowUpLeft size={17} />
+              <button
+                className="gold-btn"
+                onClick={() => {
+                  if (HERO_SLIDES[heroSlide].filter === "مخصص") setRequest(true);
+                  else {
+                    setCategory(HERO_SLIDES[heroSlide].filter);
+                    const library = document.querySelector<HTMLElement>("#library");
+                    if (library)
+                      window.scrollTo({ top: library.offsetTop - 24, behavior: "smooth" });
+                  }
+                }}
+              >
+                {HERO_SLIDES[heroSlide].cta} <ArrowUpLeft size={17} />
               </button>
               <a href="#library" className="listen">
                 <span>
                   <Play size={12} fill="currentColor" />
-                </span>{" "}
+                </span>
                 استمع إلى أعمالنا
               </a>
             </div>
             <div className="hero-meta">
               <span>
-                <Sparkles /> +480 عمل على يوتيوب
+                <Sparkles /> كتالوج صوتي يتجدد باستمرار
               </span>
               <i />
               <span>
-                <AudioLines /> +34.1K مشترك
+                <AudioLines /> أعمال تُصنع حول مناسبتكم
               </span>
             </div>
           </div>
-          <div className="hero-art">
-            <div className="ring r1" />
-            <div className="ring r2" />
-            <div className="orb" />
-            <img
-              className="art-logo-img"
-              src="/logo.png"
-              alt="ليل الأمسيات"
-              width={210}
-              height={210}
-            />
-            <div className="art-caption">
-              YOUR MOMENT
-              <br />
-              <b>OUR SOUND</b>
+          <div className="hero-visual" aria-label="معاينة بصرية للشرائح">
+            <div className="hero-visual-image" />
+            <div className="hero-visual-shade" />
+            <div className="hero-visual-mark">
+              <img src="/logo.png" alt="شعار استوديو ليل" width={92} height={92} />
+              <span>YOUR MOMENT / OUR SOUND</span>
             </div>
-            <span className="star s1">✦</span>
-            <span className="star s2">✧</span>
+            <div className="hero-visual-caption">
+              <span>استوديو ليل</span>
+              <b>{String(heroSlide + 1).padStart(2, "0")}</b>
+            </div>
           </div>
-          <div className="hero-index">
-            01 <i /> 03
+          <div className="hero-controls">
+            <button
+              className="hero-arrow"
+              onClick={() =>
+                setHeroSlide((current) => (current - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)
+              }
+              aria-label="الشريحة السابقة"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <div className="hero-dots" role="tablist" aria-label="شرائح الواجهة">
+              {HERO_SLIDES.map((slide, index) => (
+                <button
+                  key={slide.kicker}
+                  className={heroSlide === index ? "hero-dot active" : "hero-dot"}
+                  onClick={() => setHeroSlide(index)}
+                  aria-label={`الشريحة ${index + 1}`}
+                  aria-selected={heroSlide === index}
+                  role="tab"
+                />
+              ))}
+            </div>
+            <button
+              className="hero-arrow"
+              onClick={() => setHeroSlide((current) => (current + 1) % HERO_SLIDES.length)}
+              aria-label="الشريحة التالية"
+            >
+              <ChevronLeft size={18} />
+            </button>
           </div>
         </section>
         <Recommender tracks={tracks} play={play} playing={playing} />
