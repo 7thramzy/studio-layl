@@ -157,7 +157,10 @@ const HERO_SLIDES = [
 ] as const;
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">(
-    () => (localStorage.getItem("layl-theme") as "dark" | "light") || "dark",
+    () =>
+      (typeof window !== "undefined"
+        ? (localStorage.getItem("layl-theme") as "dark" | "light")
+        : null) || "dark",
   );
   const fetchTracks = useServerFn(listTracks);
   const { data: tracks = [], isLoading: loadingTracks } = useQuery({
@@ -165,6 +168,7 @@ export default function App() {
     queryFn: () => fetchTracks(),
   });
   const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
       return JSON.parse(localStorage.getItem("layl-favorites") || "[]");
     } catch {

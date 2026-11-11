@@ -8,7 +8,7 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import appCss from "../styles.css?url";
 
@@ -116,8 +116,56 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="ar" dir="rtl">
       <head>
         <HeadContent />
+        <style>{`
+          #layl-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: grid;
+            place-items: center;
+            background: #0b0b0d;
+            color: #d4af37;
+            transition: opacity 360ms ease, visibility 360ms ease;
+          }
+          #layl-splash.is-leaving {
+            opacity: 0;
+            visibility: hidden;
+          }
+          #layl-splash .splash-inner {
+            display: grid;
+            justify-items: center;
+            gap: 16px;
+            animation: layl-splash-pulse 1.7s ease-in-out infinite;
+          }
+          #layl-splash img {
+            width: 92px;
+            height: 92px;
+            border-radius: 50%;
+            object-fit: cover;
+            box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.36), 0 18px 55px rgba(0, 0, 0, 0.45);
+          }
+          #layl-splash span {
+            color: rgba(241, 238, 231, 0.72);
+            font: 600 10px/1 Alexandria, sans-serif;
+            letter-spacing: 3px;
+          }
+          @keyframes layl-splash-pulse {
+            0%, 100% { transform: scale(0.98); opacity: 0.78; }
+            50% { transform: scale(1); opacity: 1; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            #layl-splash .splash-inner { animation: none; }
+            #layl-splash { transition: none; }
+          }
+        `}</style>
       </head>
       <body>
+        <div id="layl-splash" role="status" aria-label="جارٍ تحميل استوديو ليل">
+          <div className="splash-inner">
+            <img src="/logo.webp" alt="استوديو ليل" width="92" height="92" />
+            <span>STUDIO LAYL</span>
+          </div>
+        </div>
         {children}
         <Scripts />
       </body>
@@ -127,6 +175,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    const splash = document.getElementById("layl-splash");
+    if (!splash) return;
+    const frame = window.requestAnimationFrame(() => splash.classList.add("is-leaving"));
+    const timer = window.setTimeout(() => splash.remove(), 420);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

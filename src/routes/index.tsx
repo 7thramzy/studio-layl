@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import StudioLayl from "@/components/StudioLayl";
 
 export const Route = createFileRoute("/")({
@@ -17,9 +16,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// The studio UI reads saved preferences from the browser, so render it after hydration.
 function Index() {
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  return ready ? <StudioLayl /> : <div style={{ minHeight: "100vh", background: "#0b0b0d" }} />;
+  return <StudioLayl />;
 }
