@@ -346,7 +346,7 @@ export default function App() {
         <a className="brand" href="#home">
           <img
             className="brand-logo"
-            src="/logo.png"
+            src="/logo.webp"
             alt="شعار ليل الأمسيات"
             width={44}
             height={44}
@@ -441,10 +441,21 @@ export default function App() {
             </div>
           </div>
           <div className="hero-visual" aria-label="معاينة بصرية للشرائح">
-            <div className="hero-visual-image" />
+            <picture className="hero-visual-picture">
+              <source media="(max-width: 650px)" srcSet="/logo.webp" />
+              <img
+                className="hero-visual-image"
+                src="/banner-hero.webp"
+                alt="هوية استوديو ليل الصوتية"
+                width={1800}
+                height={298}
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
             <div className="hero-visual-shade" />
             <div className="hero-visual-mark">
-              <img src="/logo.png" alt="شعار استوديو ليل" width={92} height={92} />
+              <img src="/logo.webp" alt="شعار استوديو ليل" width={92} height={92} />
               <span>YOUR MOMENT / OUR SOUND</span>
             </div>
             <div className="hero-visual-caption">
@@ -718,7 +729,7 @@ export default function App() {
         <a className="brand" href="#home">
           <img
             className="brand-logo"
-            src="/logo.png"
+            src="/logo.webp"
             alt="شعار ليل الأمسيات"
             width={44}
             height={44}
