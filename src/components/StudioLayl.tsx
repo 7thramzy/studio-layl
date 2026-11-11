@@ -211,6 +211,43 @@ export default function App() {
     );
     return () => window.clearInterval(timer);
   }, [heroPaused]);
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const revealItems = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    const parallaxItems = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.classList.add("is-visible");
+        });
+      },
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.08 },
+    );
+    revealItems.forEach((item) => observer.observe(item));
+    let frame = 0;
+    const updateParallax = () => {
+      frame = 0;
+      if (reduceMotion) return;
+      const midpoint = window.innerHeight / 2;
+      parallaxItems.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        const distance = midpoint - (rect.top + rect.height / 2);
+        const intensity = Number(item.dataset.parallax || 0.08);
+        const offset = Math.max(-24, Math.min(24, distance * intensity));
+        item.style.setProperty("--parallax-y", `${offset.toFixed(1)}px`);
+      });
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateParallax);
+    };
+    updateParallax();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
   const artists = useMemo(() => ["الكل", ...new Set(tracks.map((t) => t.artist))], [tracks]);
   const visible = useMemo(() => {
     const filtered = tracks.filter(
@@ -495,7 +532,7 @@ export default function App() {
           </div>
         </section>
         <Recommender tracks={tracks} play={play} playing={playing} />
-        <section className="section" id="library">
+        <section className="section motion-reveal" id="library" data-reveal data-parallax="0.035">
           <div className="section-head">
             <div>
               <div className="eyebrow">
@@ -577,9 +614,9 @@ export default function App() {
               </select>
             </label>
           </div>
-          <div className="cards">
+          <div className="cards motion-stagger">
             {visible.map((t, i) => (
-              <article className="track" id={"w-" + t.id} key={t.id}>
+              <article className="track motion-item" id={"w-" + t.id} key={t.id}>
                 <div className="cover">
                   <div className={waveforms[t.id] ? "wave real" : "wave"}>
                     {(waveforms[t.id] ?? Array.from({ length: 19 }, () => null)).map(
@@ -673,7 +710,7 @@ export default function App() {
             <span>{visible.length} أعمال معروضة</span>
           </div>
         </section>
-        <section className="quote" id="about">
+        <section className="quote motion-reveal" id="about" data-reveal data-parallax="0.055">
           <div>“</div>
           <p>
             ليست مجرد زفة؛ إنها نغمة تبقى
@@ -682,7 +719,7 @@ export default function App() {
           </p>
           <small>استوديو ليل — نصنع صوت لحظتكم</small>
         </section>
-        <section className="custom">
+        <section className="custom motion-reveal" data-reveal data-parallax="0.04">
           <div className="custom-icon">
             <AudioLines />
           </div>
@@ -698,7 +735,7 @@ export default function App() {
           </button>
         </section>
         <Reviews />
-        <section className="section" id="contact">
+        <section className="section motion-reveal" id="contact" data-reveal data-parallax="0.025">
           <div className="section-head">
             <div>
               <div className="eyebrow">
@@ -1089,7 +1126,12 @@ function Recommender({
     }
   };
   return (
-    <section className="section ai-match" id="match">
+    <section
+      className="section ai-match motion-reveal"
+      id="match"
+      data-reveal
+      data-parallax="0.025"
+    >
       <div className="section-head">
         <div>
           <div className="eyebrow">
@@ -1343,7 +1385,7 @@ function Reviews() {
   const { data = [] } = useReviews();
   if (!data.length) return null;
   return (
-    <section className="section" id="reviews">
+    <section className="section motion-reveal" id="reviews" data-reveal data-parallax="0.025">
       <div className="section-head">
         <div>
           <div className="eyebrow">
@@ -1354,9 +1396,9 @@ function Reviews() {
           </h2>
         </div>
       </div>
-      <div className="cards">
+      <div className="cards motion-stagger">
         {data.map((r) => (
-          <blockquote className="review" key={r.id}>
+          <blockquote className="review motion-item" key={r.id}>
             <p>“{r.body}”</p>
             <footer>
               {r.name}
