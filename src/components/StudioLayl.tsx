@@ -58,18 +58,10 @@ const VL: Record<string, string> = {
 const ADDS = ["كتابة قصيدة خاصة", "إلقاء شعري في المقدمة", "مونتاج فيديو 4K", "تسليم مستعجل VIP"];
 const MOODS = ["الكل", "هادئ", "حماسي", "فخم", "ترحيبي", "عاطفي"];
 const CONTACTS: [string, string, string][] = [
-  ["واتساب داخل المملكة", "0505174857", "tel:0505174857"],
   ["واتساب خارج المملكة", "+966505174857", "https://wa.me/966505174857"],
   ["يوتيوب", "@studio-layl", "https://www.youtube.com/@studio-layl"],
   ["إنستغرام", "@zafat05", "https://www.instagram.com/zafat05"],
   ["تيك توك", "@lm.2500", "https://www.tiktok.com/@lm.2500"],
-  ["البريد الإلكتروني", "lm-layl@hotmail.com", "mailto:lm-layl@hotmail.com"],
-  ["البريد الإلكتروني", "layl-alamisiat@outlook.com", "mailto:layl-alamisiat@outlook.com"],
-  [
-    "البريد الإلكتروني",
-    "zafaat-layl-alamisiat@hotmail.com",
-    "mailto:zafaat-layl-alamisiat@hotmail.com",
-  ],
 ];
 const contactIcon = (href: string) => {
   if (href.startsWith("tel:")) return <Phone size={17} />;
