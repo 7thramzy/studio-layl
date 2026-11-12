@@ -1269,8 +1269,17 @@ function AdminLogin({ onSuccess }: { onSuccess: (session: AdminSession) => void 
     setMsg("");
     try {
       onSuccess(await adminLogin({ data: { username, password } }));
-    } catch {
-      setMsg("اسم المستخدم أو كلمة المرور غير صحيحة.");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      setMsg(
+        reason === "ADMIN_CONFIGURATION_MISSING"
+          ? "إعدادات الخادم ناقصة: أضف SUPABASE_SERVICE_ROLE_KEY في Vercel ثم أعد النشر."
+          : reason === "ADMIN_DATABASE_UNAVAILABLE"
+            ? "تعذر الاتصال بقاعدة البيانات. راجع SUPABASE_URL وSUPABASE_SERVICE_ROLE_KEY."
+            : reason === "ADMIN_INITIAL_ACCOUNT_NOT_CONFIGURED"
+              ? "لم يتم إعداد ADMIN_INITIAL_PASSWORD في Vercel لإنشاء المدير الأول."
+              : "اسم المستخدم أو كلمة المرور غير صحيحة.",
+      );
     }
     setBusy(false);
   };

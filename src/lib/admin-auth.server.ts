@@ -18,7 +18,7 @@ type AdminDb = ReturnType<typeof createAdminDb>;
 function createAdminDb() {
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  if (!url || !key) throw new Error("Admin database credentials are not configured");
+  if (!url || !key) throw new Error("ADMIN_CONFIGURATION_MISSING");
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
   });
@@ -68,19 +68,23 @@ async function ensureBootstrapUser(db: AdminDb) {
   const username = process.env["ADMIN_INITIAL_USERNAME"]?.trim();
   const password = process.env["ADMIN_INITIAL_PASSWORD"];
   if (!username || !password) return;
-  const { data: existing } = await db
+  const { data: existing, error: lookupError } = await db
     .from("admin_users")
     .select("id")
     .eq("username", username)
     .maybeSingle();
+  if (lookupError) throw new Error("ADMIN_DATABASE_UNAVAILABLE");
   if (existing) return;
-  await db.from("admin_users").insert({
+  const { error: insertError } = await db.from("admin_users").insert({
     username,
     password_hash: encodePassword(password),
     display_name: "مدير استوديو ليل",
     role: "admin",
     is_active: true,
   });
+  if (insertError && !insertError.message.toLowerCase().includes("duplicate")) {
+    throw new Error("ADMIN_DATABASE_UNAVAILABLE");
+  }
 }
 
 export async function loginAdmin(username: string, password: string) {
@@ -91,8 +95,13 @@ export async function loginAdmin(username: string, password: string) {
     .select("id,username,password_hash,display_name,role,is_active")
     .eq("username", username.trim())
     .maybeSingle();
-  if (!user || !user.is_active || !verifyPassword(password, user.password_hash)) {
-    throw new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+  if (!user) {
+    if (!process.env["ADMIN_INITIAL_PASSWORD"])
+      throw new Error("ADMIN_INITIAL_ACCOUNT_NOT_CONFIGURED");
+    throw new Error("ADMIN_INVALID_CREDENTIALS");
+  }
+  if (!user.is_active || !verifyPassword(password, user.password_hash)) {
+    throw new Error("ADMIN_INVALID_CREDENTIALS");
   }
   const token = randomBytes(32).toString("base64url");
   await db.from("admin_sessions").delete().eq("user_id", user.id);
