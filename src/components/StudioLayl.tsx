@@ -36,6 +36,11 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
+  Instagram,
+  Mail,
+  Phone,
+  Youtube,
 } from "lucide-react";
 type Track = PublicTrack;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -66,6 +71,14 @@ const CONTACTS: [string, string, string][] = [
     "mailto:zafaat-layl-alamisiat@hotmail.com",
   ],
 ];
+const contactIcon = (href: string) => {
+  if (href.startsWith("tel:")) return <Phone size={17} />;
+  if (href.startsWith("mailto:")) return <Mail size={17} />;
+  if (href.includes("youtube")) return <Youtube size={17} />;
+  if (href.includes("instagram")) return <Instagram size={17} />;
+  if (href.includes("tiktok")) return <Music2 size={17} />;
+  return <MessageCircle size={17} />;
+};
 // Synthesized preview used until a real audio file is uploaded for a work.
 let ac: AudioContext | undefined,
   tmr = 0,
@@ -755,52 +768,58 @@ export default function App() {
           </button>
         </section>
         <Reviews />
-        <section className="section motion-reveal" id="contact" data-reveal>
-          <div className="section-head parallax-target" data-parallax="0.025">
-            <div>
-              <div className="eyebrow">
-                <i /> التواصل الرسمي
-              </div>
-              <h2>
-                نصلكم <em>بسهولة</em>
-              </h2>
-            </div>
-            <p>انسخ أي بيان بنقرة أو افتحه مباشرة.</p>
-          </div>
-          <div className="contacts">
-            {CONTACTS.map(([l, v, h]) => (
-              <div className="contact" key={v}>
-                <span>
-                  <small>{l}</small>
-                  <a dir="ltr" href={h} target="_blank" rel="noopener noreferrer">
-                    {v}
-                  </a>
-                </span>
-                <button onClick={() => copy(v)}>نسخ</button>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
-      <footer className="footer">
-        <a className="brand" href="#home">
-          <img
-            className="brand-logo"
-            src="/logo.webp"
-            alt="شعار ليل الأمسيات"
-            width={44}
-            height={44}
-          />
-          <span>
-            <b>ليل الأمسيات</b>
-            <small>زفات وشيلات</small>
-          </span>
-        </a>
-        <span>© {new Date().getFullYear()} استوديو ليل. جميع الحقوق محفوظة.</span>
-        <div>
-          <a href="#library">الأعمال</a>
-          <a href="#about">من نحن</a>
-          <button onClick={() => setAdmin(true)}>الإدارة</button>
+      <footer className="footer" id="contact">
+        <div className="footer-main">
+          <a className="brand" href="#home">
+            <img
+              className="brand-logo"
+              src="/logo.webp"
+              alt="شعار ليل الأمسيات"
+              width={44}
+              height={44}
+            />
+            <span>
+              <b>ليل الأمسيات</b>
+              <small>زفات وشيلات</small>
+            </span>
+          </a>
+          <div className="footer-intro">
+            <b>نصنع صوت لحظتكم.</b>
+            <span>تواصلوا معنا مباشرة عبر القناة الأنسب لكم.</span>
+          </div>
+          <div className="footer-links">
+            <a href="#library">الأعمال</a>
+            <a href="#about">من نحن</a>
+            <button onClick={() => setAdmin(true)}>الإدارة</button>
+          </div>
+        </div>
+        <div className="footer-contacts" aria-label="بيانات التواصل والحسابات">
+          {CONTACTS.map(([label, value, href]) => {
+            const external = href.startsWith("http");
+            return (
+              <a
+                className="footer-contact"
+                dir="rtl"
+                href={href}
+                key={`${label}-${value}`}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
+                aria-label={`${label}: ${value}`}
+              >
+                <span className="footer-contact-icon">{contactIcon(href)}</span>
+                <span className="footer-contact-copy">
+                  <small>{label}</small>
+                  <b dir="ltr">{value}</b>
+                </span>
+                <ExternalLink className="footer-contact-arrow" size={14} />
+              </a>
+            );
+          })}
+        </div>
+        <div className="footer-bottom">
+          <span>© {new Date().getFullYear()} استوديو ليل. جميع الحقوق محفوظة.</span>
+          <span>صوت يليق ببداية الحكاية.</span>
         </div>
       </footer>
       {cur && (
