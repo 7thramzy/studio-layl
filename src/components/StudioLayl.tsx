@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import type { Session } from "@supabase/supabase-js";
+import type { AdminSession } from "@/lib/admin-auth.server";
 import { supabase } from "@/integrations/supabase/client";
 import { listTracks, recommendTracks } from "@/lib/studio.functions";
+import { adminLogin, adminLogout, adminSession } from "@/lib/admin-auth.functions";
+import {
+  adminAddReview,
+  adminAddTrack,
+  adminDeleteOrder,
+  adminDeleteReview,
+  adminDeleteTrack,
+  adminListOrders,
+  adminUpdateOrder,
+} from "@/lib/admin.functions";
 import type { Database } from "@/integrations/supabase/types";
 import type { PublicTrack } from "@/lib/studio.server";
 import {
@@ -24,7 +34,6 @@ import {
   MessageCircle,
   Clock3,
   CheckCircle2,
-  Upload,
   Wand2,
   LogOut,
   SkipBack,
@@ -1208,35 +1217,15 @@ function Recommender({
   );
 }
 
-const fmtDuration = (sec: number) =>
-  `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(Math.round(sec % 60)).padStart(2, "0")}`;
-const readDuration = (file: File) =>
-  new Promise<string>((resolve) => {
-    const a = new Audio();
-    const url = URL.createObjectURL(file);
-    a.preload = "metadata";
-    a.onloadedmetadata = () => {
-      resolve(Number.isFinite(a.duration) ? fmtDuration(a.duration) : "—");
-      URL.revokeObjectURL(url);
-    };
-    a.onerror = () => resolve("—");
-    a.src = url;
-  });
-
 function AdminModal({ tracks, close }: { tracks: Track[]; close: () => void }) {
-  const [session, setSession] = useState<Session | null>(null),
-    [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(null),
+    [loading, setLoading] = useState(true);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => data.subscription.unsubscribe();
+    adminSession()
+      .then(setSession)
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false));
   }, []);
-  useEffect(() => {
-    if (!session) return setIsAdmin(null);
-    supabase
-      .rpc("has_role", { _user_id: session.user.id, _role: "admin" })
-      .then(({ data }) => setIsAdmin(!!data));
-  }, [session]);
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal admin">
@@ -1246,62 +1235,53 @@ function AdminModal({ tracks, close }: { tracks: Track[]; close: () => void }) {
         <div className="eyebrow">
           <i /> إدارة المكتبة
         </div>
-        {!session ? (
-          <AdminLogin />
-        ) : isAdmin === null ? (
+        {loading ? (
           <p className="intro">جارٍ التحقق...</p>
-        ) : !isAdmin ? (
+        ) : !session ? (
+          <AdminLogin onSuccess={setSession} />
+        ) : session.role !== "admin" ? (
           <>
             <h2>لا تملك صلاحية الإدارة</h2>
-            <p className="intro">هذا الحساب ليس حساب مالك الاستوديو.</p>
-            <button className="gold-btn submit" onClick={() => supabase.auth.signOut()}>
+            <p className="intro">هذه اللوحة متاحة فقط للمستخدم صاحب دور admin.</p>
+            <button className="gold-btn submit" onClick={() => void adminLogout().then(close)}>
               <LogOut /> تسجيل الخروج
             </button>
           </>
         ) : (
-          <AdminPanel tracks={tracks} email={session.user.email ?? ""} />
+          <AdminPanel
+            tracks={tracks}
+            username={session.username}
+            onLogout={() => void adminLogout().then(close)}
+          />
         )}
       </div>
     </div>
   );
 }
 
-function AdminLogin() {
-  const [mode, setMode] = useState<"in" | "up">("in"),
-    [email, setEmail] = useState(""),
+function AdminLogin({ onSuccess }: { onSuccess: (session: AdminSession) => void }) {
+  const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [msg, setMsg] = useState(""),
     [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true);
     setMsg("");
-    if (mode === "in") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMsg("البريد أو كلمة المرور غير صحيحة.");
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: window.location.origin },
-      });
-      setMsg(
-        error ? error.message : "تم إنشاء الحساب. افتح رسالة التأكيد في بريدك ثم سجّل الدخول.",
-      );
+    try {
+      onSuccess(await adminLogin({ data: { username, password } }));
+    } catch {
+      setMsg("اسم المستخدم أو كلمة المرور غير صحيحة.");
     }
     setBusy(false);
   };
   return (
     <>
-      <h2>{mode === "in" ? "دخول المالك" : "إنشاء حساب المالك"}</h2>
-      <p className="intro">
-        {mode === "in"
-          ? "سجّل الدخول لإدارة الأعمال ورفع الملفات الصوتية."
-          : "أول حساب يُنشأ يصبح حساب مالك الاستوديو."}
-      </p>
+      <h2>دخول لوحة الإدارة</h2>
+      <p className="intro">أدخل اسم المستخدم وكلمة المرور للوصول إلى محتوى الاستوديو.</p>
       <div className="form">
         <label className="wide">
-          البريد الإلكتروني
-          <input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          اسم المستخدم
+          <input dir="ltr" value={username} onChange={(e) => setUsername(e.target.value)} />
         </label>
         <label className="wide">
           كلمة المرور
@@ -1315,32 +1295,14 @@ function AdminLogin() {
       </div>
       <button
         className="gold-btn submit"
-        disabled={busy || !email || password.length < 6}
+        disabled={busy || username.length < 3 || password.length < 8}
         onClick={submit}
       >
-        {mode === "in" ? "دخول" : "إنشاء الحساب"}
+        {busy ? "جارٍ التحقق..." : "دخول"}
       </button>
       {msg && <small className="note">{msg}</small>}
-      <button className="link-btn" onClick={() => setMode(mode === "in" ? "up" : "in")}>
-        {mode === "in" ? "لا يوجد حساب بعد؟ أنشئ حساب المالك" : "لديك حساب؟ سجّل الدخول"}
-      </button>
     </>
   );
-}
-
-async function uploadAudio(trackId: string, file: File) {
-  const ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const path = `${trackId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("track-audio")
-    .upload(path, file, { contentType: file.type || "audio/mpeg" });
-  if (error) throw error;
-  const duration = await readDuration(file);
-  const { error: e2 } = await supabase
-    .from("tracks")
-    .update({ audio_path: path, duration })
-    .eq("id", trackId);
-  if (e2) throw e2;
 }
 
 const STATUS: Record<string, string> = {
@@ -1464,9 +1426,9 @@ function ReviewsAdmin() {
         className="gold-btn submit"
         disabled={!name.trim() || !body.trim()}
         onClick={async () => {
-          await supabase
-            .from("testimonials")
-            .insert({ name: name.trim(), city: city.trim(), body: body.trim() });
+          await adminAddReview({
+            data: { name: name.trim(), city: city.trim(), body: body.trim() },
+          });
           setName("");
           setCity("");
           setBody("");
@@ -1485,7 +1447,7 @@ function ReviewsAdmin() {
             <button
               aria-label="حذف الرأي"
               onClick={async () => {
-                await supabase.from("testimonials").delete().eq("id", r.id);
+                await adminDeleteReview({ data: { id: r.id } });
                 refresh();
               }}
             >
@@ -1511,14 +1473,7 @@ function OrdersBoard() {
   const qc = useQueryClient();
   const { data: orders = [] } = useQuery({
     queryKey: ["orders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => adminListOrders(),
   });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["orders"] });
   return (
@@ -1558,7 +1513,7 @@ function OrdersBoard() {
                 value={o.status}
                 aria-label="حالة الطلب"
                 onChange={async (e) => {
-                  await supabase.from("orders").update({ status: e.target.value }).eq("id", o.id);
+                  await adminUpdateOrder({ data: { id: o.id, status: e.target.value } });
                   refresh();
                 }}
               >
@@ -1571,7 +1526,7 @@ function OrdersBoard() {
               <button
                 aria-label="حذف الطلب"
                 onClick={async () => {
-                  await supabase.from("orders").delete().eq("id", o.id);
+                  await adminDeleteOrder({ data: { id: o.id } });
                   refresh();
                 }}
               >
@@ -1586,7 +1541,15 @@ function OrdersBoard() {
   );
 }
 
-function AdminPanel({ tracks, email }: { tracks: Track[]; email: string }) {
+function AdminPanel({
+  tracks,
+  username,
+  onLogout,
+}: {
+  tracks: Track[];
+  username: string;
+  onLogout: () => void;
+}) {
   const qc = useQueryClient();
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("زفات"),
@@ -1594,7 +1557,6 @@ function AdminPanel({ tracks, email }: { tracks: Track[]; email: string }) {
     [artist, setArtist] = useState("استوديو ليل الأمسيات"),
     [yt, setYt] = useState(""),
     [lyrics, setLyrics] = useState(""),
-    [file, setFile] = useState<File | null>(null),
     [busy, setBusy] = useState<string | null>(null),
     [msg, setMsg] = useState("");
   const refresh = () => qc.invalidateQueries({ queryKey: ["tracks"] });
@@ -1615,32 +1577,51 @@ function AdminPanel({ tracks, email }: { tracks: Track[]; email: string }) {
     run(
       "add",
       async () => {
-        const { data, error } = await supabase
-          .from("tracks")
-          .insert({
+        await adminAddTrack({
+          data: {
             title: title.trim(),
             category,
             description: description.trim(),
             artist: artist.trim() || "استوديو ليل الأمسيات",
-            youtube_url: yt.trim() || null,
+            youtubeUrl: yt.trim(),
             lyrics: lyrics.trim(),
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-        if (file) await uploadAudio(data.id, file);
+          },
+        });
         setTitle("");
         setDescription("");
-        setFile(null);
       },
       "تمت إضافة العمل.",
     );
   return (
     <>
-      <h2>إضافة عمل جديد</h2>
+      <div className="admin-dashboard-head">
+        <div>
+          <div className="eyebrow">
+            <i /> لوحة تحكم مصغرة
+          </div>
+          <h2>إدارة استوديو ليل</h2>
+          <p className="intro">تعديل الأعمال والآراء ومتابعة الطلبات من مكان واحد.</p>
+        </div>
+        <span className="admin-role-badge">admin</span>
+      </div>
+      <div className="admin-quick-stats">
+        <div>
+          <small>الأعمال</small>
+          <b>{tracks.length}</b>
+        </div>
+        <div>
+          <small>إجمالي التشغيل</small>
+          <b>{tracks.reduce((total, track) => total + track.plays, 0)}</b>
+        </div>
+        <div>
+          <small>الحالة</small>
+          <b>متصل</b>
+        </div>
+      </div>
+      <h3 className="admin-section-title">إضافة عمل جديد</h3>
       <p className="intro">
-        مسجّل باسم {email} ·{" "}
-        <button className="link-btn inline" onClick={() => supabase.auth.signOut()}>
+        مسجّل باسم {username} ·{" "}
+        <button className="link-btn inline" onClick={onLogout}>
           تسجيل الخروج
         </button>
       </p>
@@ -1674,14 +1655,6 @@ function AdminPanel({ tracks, email }: { tracks: Track[]; email: string }) {
             <option>مخصص</option>
           </select>
         </label>
-        <label>
-          الملف الصوتي
-          <input
-            type="file"
-            accept="audio/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
         <label className="wide">
           وصف العمل
           <input
@@ -1705,27 +1678,13 @@ function AdminPanel({ tracks, email }: { tracks: Track[]; email: string }) {
               </small>
             </span>
             <span className="admin-actions">
-              <label className="upload-btn" aria-label="رفع ملف صوتي">
-                {busy === t.id ? "..." : <Upload />}
-                <input
-                  type="file"
-                  accept="audio/*"
-                  hidden
-                  disabled={!!busy}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void run(t.id, () => uploadAudio(t.id, f), `تم رفع صوت «${t.title}».`);
-                  }}
-                />
-              </label>
               <button
                 disabled={!!busy}
                 onClick={() =>
                   run(
                     "del" + t.id,
                     async () => {
-                      const { error } = await supabase.from("tracks").delete().eq("id", t.id);
-                      if (error) throw error;
+                      await adminDeleteTrack({ data: { id: t.id } });
                     },
                     "تم حذف العمل.",
                   )
