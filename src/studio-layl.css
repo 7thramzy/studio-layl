@@ -2027,3 +2027,78 @@ html:not(.motion-ready) .motion-reveal:not(.is-visible) .ai-box {
     left: 18px;
   }
 }
+
+/* Soft radius system */
+:root {
+  --radius-control: 12px;
+  --radius-card: 20px;
+  --radius-modal: 24px;
+}
+.gold-btn,
+.nav-cta,
+.tab,
+.listen,
+.contact button,
+.footer button,
+.search,
+.search input,
+.smart-filters select,
+.ai-box textarea,
+.form input,
+.form textarea,
+.form select,
+.adds .tab,
+.dock .tab {
+  border-radius: var(--radius-control);
+}
+.track,
+.contact,
+.custom,
+.ai-box,
+.review,
+.admin-list,
+.hero-visual {
+  border-radius: var(--radius-card);
+}
+.modal,
+.backdrop > .modal {
+  border-radius: var(--radius-modal);
+}
+.gold-btn,
+.nav-cta,
+.tab,
+.listen,
+.contact button,
+.footer button,
+.search,
+.search input,
+.smart-filters select,
+.ai-box textarea,
+.form input,
+.form textarea,
+.form select {
+  transition:
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease,
+    filter 0.25s ease;
+}
+.gold-btn:hover,
+.nav-cta:hover,
+.tab:hover,
+.listen:hover,
+.contact button:hover,
+.footer button:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+@media (max-width: 650px) {
+  .track,
+  .contact,
+  .custom,
+  .ai-box,
+  .review,
+  .hero-visual {
+    border-radius: 16px;
+  }
+}
