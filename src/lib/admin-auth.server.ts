@@ -4,7 +4,6 @@ import { getRequestHeader, setResponseHeader } from "@tanstack/react-start/serve
 
 const SESSION_COOKIE = "layl_admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 12;
-const PASSWORD_COST = 16_384;
 
 type AdminRole = "admin" | "editor" | "viewer";
 export type AdminSession = {
@@ -22,12 +21,6 @@ function createAdminDb() {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
   });
-}
-
-function encodePassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64, { N: PASSWORD_COST, r: 8, p: 1 }).toString("hex");
-  return `scrypt$${PASSWORD_COST}$8$1$${salt}$${hash}`;
 }
 
 function verifyPassword(password: string, encoded: string) {
@@ -64,40 +57,15 @@ function setSessionCookie(token: string, maxAge = SESSION_MAX_AGE) {
   );
 }
 
-async function ensureBootstrapUser(db: AdminDb) {
-  const username = process.env["ADMIN_INITIAL_USERNAME"]?.trim();
-  const password = process.env["ADMIN_INITIAL_PASSWORD"];
-  if (!username || !password) return;
-  const { data: existing, error: lookupError } = await db
-    .from("admin_users")
-    .select("id")
-    .eq("username", username)
-    .maybeSingle();
-  if (lookupError) throw new Error("ADMIN_DATABASE_UNAVAILABLE");
-  if (existing) return;
-  const { error: insertError } = await db.from("admin_users").insert({
-    username,
-    password_hash: encodePassword(password),
-    display_name: "مدير استوديو ليل",
-    role: "admin",
-    is_active: true,
-  });
-  if (insertError && !insertError.message.toLowerCase().includes("duplicate")) {
-    throw new Error("ADMIN_DATABASE_UNAVAILABLE");
-  }
-}
-
 export async function loginAdmin(username: string, password: string) {
   const db = createAdminDb();
-  await ensureBootstrapUser(db);
-  const { data: user } = await db
+  const { data: user, error: userLookupError } = await db
     .from("admin_users")
     .select("id,username,password_hash,display_name,role,is_active")
     .eq("username", username.trim())
     .maybeSingle();
+  if (userLookupError) throw new Error("ADMIN_DATABASE_UNAVAILABLE");
   if (!user) {
-    if (!process.env["ADMIN_INITIAL_PASSWORD"])
-      throw new Error("ADMIN_INITIAL_ACCOUNT_NOT_CONFIGURED");
     throw new Error("ADMIN_INVALID_CREDENTIALS");
   }
   if (!user.is_active || !verifyPassword(password, user.password_hash)) {

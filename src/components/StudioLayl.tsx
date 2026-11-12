@@ -1276,9 +1276,7 @@ function AdminLogin({ onSuccess }: { onSuccess: (session: AdminSession) => void 
           ? "إعدادات الخادم ناقصة: أضف SUPABASE_SERVICE_ROLE_KEY في Vercel ثم أعد النشر."
           : reason === "ADMIN_DATABASE_UNAVAILABLE"
             ? "تعذر الاتصال بقاعدة البيانات. راجع SUPABASE_URL وSUPABASE_SERVICE_ROLE_KEY."
-            : reason === "ADMIN_INITIAL_ACCOUNT_NOT_CONFIGURED"
-              ? "لم يتم إعداد ADMIN_INITIAL_PASSWORD في Vercel لإنشاء المدير الأول."
-              : "اسم المستخدم أو كلمة المرور غير صحيحة.",
+            : "اسم المستخدم أو كلمة المرور غير صحيحة.",
       );
     }
     setBusy(false);
